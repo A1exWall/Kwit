@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "ClearAir",
-    "slug": "ClearAir",
+    "name": "Kwit",
+    "slug": "kwit",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -12,6 +12,7 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
+      "bundleIdentifier": "com.yourname.kwit",
       "supportsTablet": true
     },
     "android": {
@@ -25,6 +26,10 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ]
   }
 }
