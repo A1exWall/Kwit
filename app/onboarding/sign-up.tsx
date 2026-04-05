@@ -12,6 +12,8 @@ import {
 import { useRouter } from "expo-router";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
+import { canAttemptAuth, recordAuthFailure, resetAuthRateLimit } from "../../lib/authRateLimit";
+import { isValidEmail } from "../../lib/inputValidation";
 
 export default function SignUpScreen() {
   const router = useRouter();
@@ -26,8 +28,18 @@ export default function SignUpScreen() {
       setError("Please enter your email and password.");
       return;
     }
+    if (!isValidEmail(trimmedEmail)) {
+      setError("Please enter a valid email address.");
+      return;
+    }
     if (password.length < 6) {
       setError("Password must be at least 6 characters.");
+      return;
+    }
+
+    const rateLimit = await canAttemptAuth("signup", trimmedEmail);
+    if (!rateLimit.allowed) {
+      setError(`Too many attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`);
       return;
     }
 
@@ -41,22 +53,26 @@ export default function SignUpScreen() {
       });
 
       if (signUpError) {
+        await recordAuthFailure("signup", trimmedEmail);
         setError(signUpError.message);
         return;
       }
 
       if (data?.session) {
+        await resetAuthRateLimit("signup", trimmedEmail);
         router.replace("/onboarding/questions");
         return;
       }
 
       if (data?.user && !data.session) {
+        await resetAuthRateLimit("signup", trimmedEmail);
         setError(
           "Check your email to confirm your account, then sign in below."
         );
         return;
       }
 
+      await recordAuthFailure("signup", trimmedEmail);
       setError("Something went wrong. Please try again.");
     } catch (err: any) {
       setError(err?.message || "Something went wrong. Please try again.");

@@ -12,10 +12,11 @@ import {
 import { useRouter } from "expo-router";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
+import { getPostAuthRouteForSession } from "../../lib/onboardingRouting";
 import { canAttemptAuth, recordAuthFailure, resetAuthRateLimit } from "../../lib/authRateLimit";
 import { isValidEmail } from "../../lib/inputValidation";
 
-export default function SignInScreen() {
+export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,15 +55,20 @@ export default function SignInScreen() {
         return;
       }
 
-      if (data?.session) {
-        await resetAuthRateLimit("login", trimmedEmail);
-        router.replace("/onboarding/questions");
-      } else {
+      if (!data?.session?.user) {
         await recordAuthFailure("login", trimmedEmail);
         setError("Something went wrong. Please try again.");
+        return;
       }
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Please try again.");
+
+      await resetAuthRateLimit("login", trimmedEmail);
+
+      const next = await getPostAuthRouteForSession();
+      router.replace(next);
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -86,10 +92,7 @@ export default function SignInScreen() {
           >
             Sign in
           </Text>
-          <Text
-            className="text-base mb-6"
-            style={{ color: Colors.midGrey }}
-          >
+          <Text className="text-base mb-6" style={{ color: Colors.midGrey }}>
             Welcome back. Sign in to continue.
           </Text>
 
@@ -132,10 +135,7 @@ export default function SignInScreen() {
           />
 
           {error ? (
-            <Text
-              className="text-sm mb-4"
-              style={{ color: "red" }}
-            >
+            <Text className="text-sm mb-4" style={{ color: "red" }}>
               {error}
             </Text>
           ) : null}
@@ -153,23 +153,18 @@ export default function SignInScreen() {
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-base font-semibold text-white">
-                Sign in
-              </Text>
+              <Text className="text-base font-semibold text-white">Sign in</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.back()}
+            onPress={() => router.push("/auth/signup")}
             disabled={isLoading}
             className="items-center py-2"
           >
-            <Text
-              className="text-base"
-              style={{ color: Colors.primary }}
-            >
-              Don't have an account? Sign up
+            <Text className="text-base" style={{ color: Colors.primary }}>
+              Don&apos;t have an account? Sign up
             </Text>
           </TouchableOpacity>
         </View>

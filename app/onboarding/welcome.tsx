@@ -47,6 +47,13 @@ export default function WelcomeScreen() {
           >
             Your last quit. For good.
           </Text>
+          <Text
+            className="text-sm text-center mt-3 leading-5"
+            style={{ color: Colors.midGrey }}
+          >
+            Answer a few questions next — we’ll show how much you could set aside
+            by your planned quit date.
+          </Text>
         </View>
       </View>
 
@@ -54,7 +61,7 @@ export default function WelcomeScreen() {
       <View className="w-full px-6 pb-10">
         <TouchableOpacity
           activeOpacity={0.9}
-          onPress={() => router.push("/onboarding/sign-up")}
+          onPress={() => router.push("/onboarding/questions")}
           className="h-14 rounded-full items-center justify-center"
           style={{ backgroundColor: Colors.primary }}
         >

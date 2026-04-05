@@ -1,0 +1,23 @@
+export const motivationalQuotes: string[] = [
+  "Every craving is a chance to choose freedom.",
+  "Your future self is watching what you do today.",
+  "One day at a time. One choice at a time.",
+  "You don't need nicotine - you need a plan and a pause.",
+  "Strong moments create strong habits.",
+  "Progress, not perfection.",
+  "Cravings peak fast. You can outlast them.",
+  "Keep going. You're already doing it.",
+  "Small wins add up to big change.",
+  "Breathe through it. You are getting stronger.",
+  "Freedom feels better every day.",
+  "You're not quitting. You're upgrading.",
+  "Each smoke-free minute proves your power.",
+  "Don't argue with cravings - thank them and move on.",
+  "Streaks are built one second at a time.",
+  "Your body heals when you choose not to use.",
+  "You can be uncomfortable and still be successful.",
+  "The urge will pass. So will the dependency.",
+  "Be proud of the distance you've created.",
+  "Today you choose health. Tomorrow you reap it.",
+];
+

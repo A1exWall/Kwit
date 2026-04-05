@@ -11,6 +11,14 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { useRouter } from "expo-router";
 import { Colors } from "../../constants/colors";
 import { supabase } from "../../lib/supabase";
+import { upsertProfile } from "../../lib/profileUpsert";
+import {
+  clampLength,
+  MAX_FIRST_NAME_LENGTH,
+  MAX_REASON_LENGTH,
+  sanitizeMultilineText,
+  sanitizeText,
+} from "../../lib/inputValidation";
 
 const TOTAL_STEPS = 7;
 
@@ -73,7 +81,7 @@ export default function OnboardingQuestionsScreen() {
       if (cancelled) return;
       setSessionChecked(true);
       if (error || !user) {
-        router.replace("/onboarding/sign-up");
+        router.replace("/auth/login");
       }
     })();
     return () => {
@@ -125,7 +133,7 @@ export default function OnboardingQuestionsScreen() {
       case 5:
         return !!quitStatus && !!quitDate;
       case 6:
-        return !!firstName.trim();
+        return !!sanitizeText(firstName);
       case 7:
         return !!notificationsPreference;
       default:
@@ -168,6 +176,14 @@ export default function OnboardingQuestionsScreen() {
       const numericWeeklySpend = Number(
         weeklySpend.replace(/[^0-9.]/g, "")
       );
+      const cleanFirstName = clampLength(
+        sanitizeText(firstName),
+        MAX_FIRST_NAME_LENGTH
+      );
+      const cleanOtherReason = clampLength(
+        sanitizeMultilineText(otherQuitReason),
+        MAX_REASON_LENGTH
+      );
 
       const payload = {
         nicotine_types: nicotineTypes,
@@ -176,20 +192,26 @@ export default function OnboardingQuestionsScreen() {
           ? null
           : numericWeeklySpend,
         quit_reasons: quitReasons,
-        other_quit_reason: otherQuitReason.trim() || null,
+        other_quit_reason: cleanOtherReason || null,
         quit_status: quitStatus,
         quit_date: quitDate ? quitDate.toISOString().slice(0, 10) : null,
-        first_name: firstName.trim(),
+        first_name: cleanFirstName,
         notifications_preference: notificationsPreference,
       };
 
-      const { error: updateError } = await supabase
-        .from("profiles")
-        .update(payload)
-        .eq("id", user.id);
+      const { data: savedRows, error: saveError } = await upsertProfile(
+        user.id,
+        payload
+      );
 
-      if (updateError) {
-        throw updateError;
+      if (saveError) {
+        throw saveError;
+      }
+
+      if (!savedRows || savedRows.length === 0) {
+        throw new Error(
+          "Your profile could not be saved. Check your connection and try again."
+        );
       }
 
       router.replace("/onboarding/reveal");
@@ -201,7 +223,7 @@ export default function OnboardingQuestionsScreen() {
       if (isSessionError) {
         setSubmitError("Please sign in to continue.");
         setTimeout(() => {
-          router.replace("/onboarding/sign-up");
+          router.replace("/auth/login");
         }, 1500);
       } else {
         setSubmitError(
@@ -409,7 +431,9 @@ export default function OnboardingQuestionsScreen() {
                     <View className="w-full mb-3">
                       <TextInput
                         value={otherQuitReason}
-                        onChangeText={setOtherQuitReason}
+                        onChangeText={(text) =>
+                          setOtherQuitReason(clampLength(text, MAX_REASON_LENGTH))
+                        }
                         placeholder="Tell us more..."
                         placeholderTextColor={Colors.midGrey}
                         className="w-full rounded-2xl px-4 py-3 text-base"
@@ -490,7 +514,11 @@ export default function OnboardingQuestionsScreen() {
             <View className="w-full mt-4">
               <TextInput
                 value={firstName}
-                onChangeText={setFirstName}
+                onChangeText={(text) =>
+                  setFirstName(
+                    clampLength(sanitizeText(text), MAX_FIRST_NAME_LENGTH)
+                  )
+                }
                 placeholder="First name"
                 placeholderTextColor={Colors.midGrey}
                 className="w-full rounded-2xl px-4 py-3 text-base"

@@ -15,14 +15,15 @@ import { supabase } from "../../lib/supabase";
 import { canAttemptAuth, recordAuthFailure, resetAuthRateLimit } from "../../lib/authRateLimit";
 import { isValidEmail } from "../../lib/inputValidation";
 
-export default function SignInScreen() {
+export default function SignUpScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSignIn = async () => {
+  const handleSignUp = async () => {
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
       setError("Please enter your email and password.");
@@ -32,8 +33,16 @@ export default function SignInScreen() {
       setError("Please enter a valid email address.");
       return;
     }
+    if (password !== confirmPassword) {
+      setError("Passwords do not match.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("Password must be at least 6 characters.");
+      return;
+    }
 
-    const rateLimit = await canAttemptAuth("login", trimmedEmail);
+    const rateLimit = await canAttemptAuth("signup", trimmedEmail);
     if (!rateLimit.allowed) {
       setError(`Too many attempts. Try again in ${rateLimit.retryAfterSeconds} seconds.`);
       return;
@@ -43,26 +52,29 @@ export default function SignInScreen() {
     setError(null);
 
     try {
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+      const { data, error: signUpError } = await supabase.auth.signUp({
         email: trimmedEmail,
         password,
       });
 
-      if (signInError) {
-        await recordAuthFailure("login", trimmedEmail);
-        setError(signInError.message);
+      if (signUpError) {
+        await recordAuthFailure("signup", trimmedEmail);
+        setError(signUpError.message);
         return;
       }
 
-      if (data?.session) {
-        await resetAuthRateLimit("login", trimmedEmail);
-        router.replace("/onboarding/questions");
-      } else {
-        await recordAuthFailure("login", trimmedEmail);
-        setError("Something went wrong. Please try again.");
+      if (data?.session || data?.user) {
+        await resetAuthRateLimit("signup", trimmedEmail);
+        router.replace("/onboarding/welcome");
+        return;
       }
-    } catch (err: any) {
-      setError(err?.message || "Something went wrong. Please try again.");
+
+      await recordAuthFailure("signup", trimmedEmail);
+      setError("Something went wrong. Please try again.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Something went wrong. Please try again.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -84,13 +96,10 @@ export default function SignInScreen() {
             className="text-2xl font-bold mb-2"
             style={{ color: Colors.primary }}
           >
-            Sign in
+            Create your account
           </Text>
-          <Text
-            className="text-base mb-6"
-            style={{ color: Colors.midGrey }}
-          >
-            Welcome back. Sign in to continue.
+          <Text className="text-base mb-6" style={{ color: Colors.midGrey }}>
+            Sign up to save your progress and stay on track.
           </Text>
 
           <TextInput
@@ -114,13 +123,13 @@ export default function SignInScreen() {
           />
 
           <TextInput
-            className="w-full h-12 px-4 rounded-xl mb-4 border"
+            className="w-full h-12 px-4 rounded-xl mb-3 border"
             style={{
               backgroundColor: Colors.background,
               borderColor: Colors.lightGrey,
               color: Colors.darkText,
             }}
-            placeholder="Password"
+            placeholder="Password (min 6 characters)"
             placeholderTextColor={Colors.midGrey}
             value={password}
             onChangeText={(text) => {
@@ -131,18 +140,33 @@ export default function SignInScreen() {
             editable={!isLoading}
           />
 
+          <TextInput
+            className="w-full h-12 px-4 rounded-xl mb-4 border"
+            style={{
+              backgroundColor: Colors.background,
+              borderColor: Colors.lightGrey,
+              color: Colors.darkText,
+            }}
+            placeholder="Confirm password"
+            placeholderTextColor={Colors.midGrey}
+            value={confirmPassword}
+            onChangeText={(text) => {
+              setConfirmPassword(text);
+              setError(null);
+            }}
+            secureTextEntry
+            editable={!isLoading}
+          />
+
           {error ? (
-            <Text
-              className="text-sm mb-4"
-              style={{ color: "red" }}
-            >
+            <Text className="text-sm mb-4" style={{ color: "red" }}>
               {error}
             </Text>
           ) : null}
 
           <TouchableOpacity
             activeOpacity={0.9}
-            onPress={handleSignIn}
+            onPress={handleSignUp}
             disabled={isLoading}
             className="h-14 rounded-full items-center justify-center mb-4"
             style={{
@@ -153,23 +177,18 @@ export default function SignInScreen() {
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-base font-semibold text-white">
-                Sign in
-              </Text>
+              <Text className="text-base font-semibold text-white">Sign up</Text>
             )}
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
-            onPress={() => router.back()}
+            onPress={() => router.push("/auth/login")}
             disabled={isLoading}
             className="items-center py-2"
           >
-            <Text
-              className="text-base"
-              style={{ color: Colors.primary }}
-            >
-              Don't have an account? Sign up
+            <Text className="text-base" style={{ color: Colors.primary }}>
+              Already have an account? Sign in
             </Text>
           </TouchableOpacity>
         </View>
